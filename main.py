@@ -2,7 +2,7 @@ import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from sudo import handle_report, handle_ban, handle_unban, handle_clear_bans
 
-TOKEN = '7408633253:AAFO8nD7XrVqa2L-XMzJoXpZ7XnVoQEy1fA'
+TOKEN = 'YOUR_BOT_TOKEN'
 bot = telebot.TeleBot(TOKEN)
 
 admin_id = 7426723728
