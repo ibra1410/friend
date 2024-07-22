@@ -28,6 +28,7 @@ welcome_message = (
     "- /set_interest لتحديد اهتماماتك\n"
     "- /find_friend للعثور على أصدقاء جدد\n"
     "- /report للإبلاغ عن محتوى\n"
+    "- /info لعرض معلوماتك\n"
     "- /exit لإنهاء الدردشة\n"
 )
 
@@ -37,6 +38,7 @@ commands_message = (
     "- /set_interest لتحديد اهتماماتك\n"
     "- /find_friend للعثور على أصدقاء جدد\n"
     "- /report للإبلاغ عن محتوى\n"
+    "- /info لعرض معلوماتك\n"
     "- /exit لإنهاء الدردشة\n"
 )
 
@@ -47,6 +49,7 @@ admin_welcome_message = (
     "- /set_interest لتحديد اهتماماتك\n"
     "- /find_friend للعثور على أصدقاء جدد\n"
     "- /report للإبلاغ عن محتوى\n"
+    "- /info لعرض معلوماتك\n"
     "- /exit لإنهاء الدردشة\n\n"
     "وهذه هي أوامر المطور:\n"
     "- /ban <user_id> لحظر المستخدم\n"
@@ -65,13 +68,17 @@ def handle_report(bot, message, reported_messages, admin_id):
 
 def handle_ban(bot, message, admin_id, banned_users):
     if message.from_user.id == admin_id:
-        parts = message.text.split()
-        if len(parts) == 2:
-            user_id = int(parts[1])
+        if message.reply_to_message:
+            user_id = message.reply_to_message.from_user.id
             banned_users.add(user_id)
             bot.reply_to(message, f"تم حظر المستخدم {user_id} من البوت.")
+            # منع المستخدم من التفاعل مع البوت
+            if user_id in chat_sessions:
+                friend_id = chat_sessions[user_id]
+                del chat_sessions[friend_id]
+                del chat_sessions[user_id]
         else:
-            bot.reply_to(message, "يرجى تحديد المستخدم بشكل صحيح باستخدام الأمر /ban <user_id>.")
+            bot.reply_to(message, "يرجى الرد على رسالة المستخدم الذي تريد حظره.")
 
 def handle_unban(bot, message, admin_id, banned_users):
     if message.from_user.id == admin_id:
@@ -90,6 +97,19 @@ def handle_clear_bans(bot, message, admin_id, banned_users):
     if message.from_user.id == admin_id:
         banned_users.clear()
         bot.reply_to(message, "تم مسح قائمة المحظورين.")
+
+def handle_info(bot, message):
+    user_id = message.from_user.id
+    interests = user_interests.get(user_id, [])
+    chat_session = chat_sessions.get(user_id, "لا توجد جلسة دردشة نشطة.")
+    
+    info_message = (
+        f"معلومات المستخدم:\n"
+        f"- معرف المستخدم: {user_id}\n"
+        f"- الاهتمامات: {', '.join(interests) if interests else 'لم يتم تحديد اهتمامات'}\n"
+        f"- حالة الدردشة: {chat_session}"
+    )
+    bot.reply_to(message, info_message)
 
 # وظيفة البدء
 @bot.message_handler(commands=['start'])
@@ -167,73 +187,78 @@ def find_friend(message):
 
         markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
         button = KeyboardButton("ابدأ الدردشة")
-        markup.add(button)
+        button_search = KeyboardButton("بحث عن شخص آخر")
+        markup.add(button, button_search)
 
         bot.send_message(user_id, f"وجدنا صديقًا مشتركًا في الاهتمامات! {friend_id}", reply_markup=markup)
         bot.send_message(friend_id, "تم ربطك بصديق مشترك في الاهتمامات!", reply_markup=markup)
     else:
-        bot.reply_to(message, "لم نجد أصدقاء مشتركين في الاهتمامات في الوقت الحالي.")
+        bot.send_message(user_id, "لم يتم العثور على أصدقاء. حاول مرة أخرى لاحقًا.", reply_markup=ReplyKeyboardRemove())
 
-# وظيفة بدء الدردشة
+# وظيفة بدء الدردشة مع صديق
 @bot.message_handler(func=lambda message: message.text == "ابدأ الدردشة")
 def start_chat(message):
     user_id = message.from_user.id
     if user_id in chat_sessions:
         friend_id = chat_sessions[user_id]
-        if friend_id == admin_id:
-            bot.send_message(user_id, "أنت تتحدث الآن مع المطور إبراهيم.")
-        bot.send_message(user_id, "ابدأ الدردشة الآن!")
-        bot.send_message(friend_id, "ابدأ الدردشة الآن!")
-
-        # إزالة زر "ابدأ الدردشة" بعد الضغط عليه
-        markup = ReplyKeyboardRemove()
-        bot.send_message(user_id, "لقد بدأت الدردشة!", reply_markup=markup)
-        bot.send_message(friend_id, "لقد بدأت الدردشة!", reply_markup=markup)
+        bot.send_message(user_id, f"بدأت الدردشة مع المستخدم {friend_id}.")
+        bot.send_message(friend_id, f"بدأت الدردشة مع المستخدم {user_id}.")
     else:
-        bot.reply_to(message, "لم يتم العثور على جلسة دردشة.")
+        bot.reply_to(message, "لم يتم العثور على صديق للدردشة معه. حاول مرة أخرى باستخدام /find_friend.")
+
+# وظيفة البحث عن شخص آخر
+@bot.message_handler(func=lambda message: message.text == "بحث عن شخص آخر")
+def search_another_person(message):
+    user_id = message.from_user.id
+    bot.send_message(user_id, "جاري البحث عن شخص آخر...")
+    find_friend(message)
 
 # وظيفة إنهاء الدردشة
 @bot.message_handler(commands=['exit'])
-def exit_chat(message):
+def end_chat(message):
     user_id = message.from_user.id
     if user_id in chat_sessions:
         friend_id = chat_sessions[user_id]
-        bot.send_message(friend_id, "تم إنهاء الدردشة من قبل الطرف الآخر.")
-        bot.send_message(user_id, "تم إنهاء الدردشة.")
         del chat_sessions[user_id]
         del chat_sessions[friend_id]
+        bot.reply_to(message, "تم إنهاء الدردشة.")
+        bot.send_message(friend_id, "قام المستخدم بإنهاء الدردشة.")
     else:
-        bot.reply_to(message, "أنت لست في جلسة دردشة حالياً.")
+        bot.reply_to(message, "لا توجد دردشة نشطة لإنهائها.")
 
-# وظيفة معالجة الرسائل وتوجيهها
-@bot.message_handler(func=lambda message: message.from_user.id in chat_sessions)
+# وظيفة التعامل مع الرسائل
+@bot.message_handler(func=lambda message: True)
 def handle_messages(message):
     user_id = message.from_user.id
     if user_id in banned_users:
-        bot.reply_to(message, "تم حظرك من استخدام هذا البوت.")
+        bot.reply_to(message, "عذرًا، أنت محظور من استخدام هذا البوت.")
         return
+
+    # التعامل مع الرسائل المرسلة خلال الدردشة
+    if user_id in chat_sessions:
+        friend_id = chat_sessions[user_id]
+        bot.forward_message(friend_id, message.chat.id, message.message_id)
     
-    friend_id = chat_sessions[user_id]
-    bot.send_message(friend_id, f"💬 {message.text}")
+    # التعامل مع التبليغ
+    if message.text.startswith('/report'):
+        handle_report(bot, message, reported_messages, admin_id)
+    
+    # إذا كان الأمر /info
+    if message.text.startswith('/info'):
+        handle_info(bot, message)
 
-# وظيفة التبليغ
-@bot.message_handler(commands=['report'])
-def report_message(message):
-    handle_report(bot, message, reported_messages, admin_id)
-
-# وظيفة حظر المستخدم
+# التعامل مع أوامر المطور
 @bot.message_handler(commands=['ban'])
 def ban_user(message):
     handle_ban(bot, message, admin_id, banned_users)
 
-# وظيفة إلغاء حظر المستخدم
 @bot.message_handler(commands=['unban'])
 def unban_user(message):
     handle_unban(bot, message, admin_id, banned_users)
 
-# وظيفة مسح المحظورين
 @bot.message_handler(commands=['clear_bans'])
 def clear_bans(message):
     handle_clear_bans(bot, message, admin_id, banned_users)
 
+# بدء البوت
 bot.polling()
