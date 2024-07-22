@@ -2,7 +2,7 @@ import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from sudo import handle_report, handle_ban, handle_unban, handle_clear_bans
 
-TOKEN = '7408633253:AAFO8nD7XrVqa2L-XMzJoXpZ7XnVoQEy1fA'
+TOKEN = 'YOUR_BOT_TOKEN'
 bot = telebot.TeleBot(TOKEN)
 
 admin_id = 7426723728
@@ -148,6 +148,13 @@ def start_chat(message):
             bot.send_message(user_id, "أنت تتحدث الآن مع المطور إبراهيم.")
         bot.send_message(user_id, "ابدأ الدردشة الآن!")
         bot.send_message(friend_id, "ابدأ الدردشة الآن!")
+
+        # إزالة زر "ابدأ الدردشة" بعد الضغط عليه
+        markup = ReplyKeyboardRemove()
+        bot.send_message(user_id, "لقد بدأت الدردشة!", reply_markup=markup)
+        bot.send_message(friend_id, "لقد بدأت الدردشة!", reply_markup=markup)
+    else:
+        bot.reply_to(message, "لم يتم العثور على جلسة دردشة.")
 
 # وظيفة إنهاء الدردشة
 @bot.message_handler(commands=['exit'])
