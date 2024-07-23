@@ -84,12 +84,15 @@ def handle_unban(bot, message, admin_id, banned_users):
     if message.from_user.id == admin_id:
         parts = message.text.split()
         if len(parts) == 2:
-            user_id = int(parts[1])
-            if user_id in banned_users:
-                banned_users.remove(user_id)
-                bot.reply_to(message, f"تم إلغاء حظر المستخدم {user_id}.")
-            else:
-                bot.reply_to(message, f"المستخدم {user_id} ليس محظورًا.")
+            try:
+                user_id = int(parts[1])
+                if user_id in banned_users:
+                    banned_users.remove(user_id)
+                    bot.reply_to(message, f"تم إلغاء حظر المستخدم {user_id}.")
+                else:
+                    bot.reply_to(message, f"المستخدم {user_id} ليس محظورًا.")
+            except ValueError:
+                bot.reply_to(message, "يرجى تحديد معرف المستخدم بشكل صحيح.")
         else:
             bot.reply_to(message, "يرجى تحديد المستخدم بشكل صحيح باستخدام الأمر /unban <user_id>.")
 
